@@ -10,7 +10,8 @@ def parse_news(html):
     topics = soup.find_all("li", {"class": "breadcrumb-item"})
     for topic in topics:
         if topic.text != 'صفحه اصلی':
-            selected_topics.append(topic.text)
+            selected_topics.append(topic.text.strip())
+    selected_topics = list(map(lambda x: x.text.strip(), topics))[1:]
     print(date.span.text)
     print(article_body.text)
     print(article_title.h1.text)
