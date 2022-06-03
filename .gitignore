@@ -4,3 +4,6 @@ dataset.csv
 fasttext_model.bin
 test.txt
 preprocessed_texts.json
+boolean_model.pickle
+fasttext_mean_embed.npy
+tfidf_model.pickle
