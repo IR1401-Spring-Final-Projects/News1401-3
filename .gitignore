@@ -1,2 +1,5 @@
 .DS_Store
 .dataset.csv
+dataset.csv
+fasttext_model.bin
+test.txt
