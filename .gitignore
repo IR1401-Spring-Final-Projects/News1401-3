@@ -3,3 +3,4 @@
 dataset.csv
 fasttext_model.bin
 test.txt
+preprocessed_texts.json
