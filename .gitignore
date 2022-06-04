@@ -7,3 +7,4 @@ preprocessed_texts.json
 boolean_model.pickle
 fasttext_mean_embed.npy
 tfidf_model.pickle
+preprocessed_texts.pickle
