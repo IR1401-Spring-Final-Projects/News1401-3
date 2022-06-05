@@ -1,11 +1,8 @@
 .DS_Store
-.dataset.csv
-.Preprocessed_texts.pickle
-.BooleanIR_model.pickle
-.TF_IDF_model.pickle
-.FastText_model.bin
-.FastText_mean_embed.npy
 dataset.csv
+Preprocessed_texts.pickle
+BooleanIR_model.pickle
+TF_IDF_model.pickle
+Transformer_model.pickle
+FastText_model.bin
 FastText_mean_embed.npy
-fasttext_model.bin
-preprocessed_texts.pickle
