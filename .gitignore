@@ -6,3 +6,5 @@ TF_IDF_model.pickle
 Transformer_model.pickle
 FastText_model.bin
 FastText_mean_embed.npy
+test.pickle
+good_clf.pickle
