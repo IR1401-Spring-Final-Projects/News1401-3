@@ -8,3 +8,4 @@ FastText_model.bin
 FastText_mean_embed.npy
 test.pickle
 good_clf.pickle
+Preprocessed_texts_title.pickle
