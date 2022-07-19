@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Home</title>
+        {% load dicttag %}
+    </head>
+
+    <body>
+        <div class="container-fluid">
+            <div class="jumbotron" style="margin-top:20px;">
+                <form action="" class="form-inline" method="post">
+                    <div class="input-group form-group mb-3 col-auto">
+                        <div class="input-group-prepend">
+                          <span class="input-group-text" id="inputGroup-sizing-lg">Query</span>
+                        </div>
+                        <div class="custom-file">
+                            <input type="text" class="form-control"  name="query" aria-label="Sizing example input" aria-describedby="inputGroup-sizing-lg">
+                        </div>
+                    </div> 
+                    <div class="input-group form-group mb-3 col-auto">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text" id="inputGroup-sizing-lg">k (number of news)</span>
+                        </div>
+                        <div class="custom-file">
+                            <input type="text" class="form-control"  name="k" aria-label="Sizing example input" aria-describedby="inputGroup-sizing-lg" value="5">
+                        </div>
+                    </div> 
+                    <div class="btn-group btn-pill  mb-3  ">
+                        <input class= "btn btn-primary "  name="search"  type="submit" value="Search">
+                        <input class= "btn btn-primary "  name="searchel"  type="submit" value="Search Elastic">
+                        <input class= "btn btn-success"  name="classify"  type="submit" value="Classification">
+                        <input class= "btn btn-success "  name="cluster"  type="submit" value="Clustering">
+                    </div>
+                    {% csrf_token %}
+                </form>
+                <table class="table table-hover table-dark table-striped  table-bordered table-active">
+                    <thead class= "table-active">
+                        <tr >
+                            {% for h in header %}
+                            <th>{{h}}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in data %}
+                        <tr>
+                            {% for h in header %}
+                            <td>{{d|get_value:h}}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </body>
+
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insert</title>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="jumbotron" style="margin-top:20px;">
+            <form method="post">
+                <div class=" form-inline" >
+                    <div class="btn-group btn-pill col-auto mb-3">
+                        <input class="btn btn-primary " name="get_form" type="submit" value="Get fields">
+                        <input class="btn btn-success" name="insert" type="submit" value="Upsert">
+                        <button class="btn btn-danger" name="cancel" type="button" value="Cancel" onclick="window.location.href='/mir'">Cancel</button>
+                    </div>
+                </div>
+                <div class="mb-3 ">
+                    <table>
+                        {{ form }}
+                    </table>
+                    {% csrf_token %}
+                </div>
+
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>
