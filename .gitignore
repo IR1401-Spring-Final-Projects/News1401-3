@@ -12,3 +12,5 @@ Preprocessed_texts_title.pickle
 UI/webui/mir/models/dataset.zip
 UI/webui/mir/models/Transformer Classification/pytorch_model.bin
 UI/webui/mir/models/Transformer Classification/config.json
+UI/webui/mir/models/Transformer_Classification/pytorch_model.bin
+UI/webui/mir/models/Transformer_Classification/config.json

@@ -70,8 +70,8 @@
                     </div>
                     {% csrf_token %}
                 </form>
-                <p class="font-weight-bold" style="direction: rtl; text-align: right; font-family: 'B Nazanin'; font-size: xx-large;" > موضوع خبر: {{ category }} </p>
-                <table class="table table-hover table-dark table-striped  table-bordered table-active" style="direction: rtl; text-align: right; font-family: 'B Nazanin'; font-size: larger;" >
+                <p class="font-weight-bold" style="direction: rtl; text-align: right;  font-size: xx-large; margin-top: 20px;" > PageRank </p>
+                <table class="table table-hover table-dark table-striped  table-bordered table-active" style="direction: rtl; text-align: right; font-family: 'B Nazanin';" >
                     <thead class= "table-active">
                         <tr >
                             {% for h in header_title %}
@@ -89,6 +89,47 @@
                         {% endfor %}
                     </tbody>
                 </table>
+
+                <p class="font-weight-bold" style="direction: rtl; text-align: right;  font-size: xx-large; margin-top: 20px;" > Hubs </p>
+                <table class="table table-hover table-dark table-striped  table-bordered table-active" style="direction: rtl; text-align: right; font-family: 'B Nazanin';" >
+                    <thead class= "table-active">
+                        <tr >
+                            {% for h in header_title %}
+                            <th>{{h}}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in data_h %}
+                        <tr>
+                            {% for h in header %}
+                            <td>{{d|get_value:h}}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <p class="font-weight-bold" style="direction: rtl; text-align: right;  font-size: xx-large; margin-top: 20px;" > Authority </p>
+                <table class="table table-hover table-dark table-striped  table-bordered table-active" style="direction: rtl; text-align: right; font-family: 'B Nazanin';" >
+                    <thead class= "table-active">
+                        <tr >
+                            {% for h in header_title %}
+                            <th>{{h}}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in data_a %}
+                        <tr>
+                            {% for h in header %}
+                            <td>{{d|get_value:h}}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
             </div>
         </div>
     </body>

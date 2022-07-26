@@ -36,7 +36,7 @@ BUTTON_CLASSIFY_LOGISTIC_REGRESSION_KEY = 'logistic_regression'
 BUTTON_CLASSIFY_TRANSFORMER_KEY = 'transformer_classification'
 BUTTON_CLUSTER_KEY = 'cluster'
 CHECK_EXPANSION_KEY = 'queryexpansion'
-BUTTON_CANCEL_KEY = 'cancel'
+BUTTON_LINK = 'linkanalysis'
 
 INITIALIZED = False
 
@@ -48,9 +48,13 @@ ELASTIC_MODEL = None
 LOGISTIC_REGRESSION_MODEL = None
 TF_IDF_LR_MODEL = None
 TRANSFORMER_CLASSIFICATION_MODEL = None
+TRANSFORMER_CLASSIFICATION_TOKENIZER = None
 CLUSTER_MODEL = None
+LINK_ANALYSIS = None
 DATASET = None
 PREPROCESSED_TEXT = None
+MINI_1K_DATASET = None
+MINI_1K_PREPROCESSED_TEXT = None
 MINI_4K_DATASET = None
 MINI_4K_PREPROCESSED_TEXT = None
 MINI_10K_DATASET = None
@@ -92,36 +96,33 @@ def get_mini_dataset(len_each_category=400):
 
 def init_models():
     global DATASET, PREPROCESSED_TEXT, MINI_4K_DATASET, MINI_4K_PREPROCESSED_TEXT, MINI_10K_DATASET, MINI_10K_PREPROCESSED_TEXT,\
-         FASTTEXT_MODEL, LOGISTIC_REGRESSION_MODEL, TF_IDF_LR_MODEL, ELASTIC_MODEL, TF_IDF_MODEL, CLUSTER_MODEL
+            MINI_1K_DATASET, MINI_1K_PREPROCESSED_TEXT, FASTTEXT_MODEL, LOGISTIC_REGRESSION_MODEL, TF_IDF_LR_MODEL, ELASTIC_MODEL, TF_IDF_MODEL, CLUSTER_MODEL, TRANSFORMER_CLASSIFICATION_MODEL, \
+            TRANSFORMER_CLASSIFICATION_TOKENIZER, TRANSFORMER_MODEL, LINK_ANALYSIS, BOOLEAN_MODEL
     DATASET = read_dataset_from_file()
     with open('mir/models/Preprocessed_texts.pickle', "rb") as file:
         PREPROCESSED_TEXT = pickle.load(file)
-    # MINI_4K_DATASET, MINI_4K_PREPROCESSED_TEXT = get_mini_dataset()
-    # MINI_10K_DATASET, MINI_10K_PREPROCESSED_TEXT = get_mini_dataset(1000)
+    MINI_1K_DATASET, MINI_1K_PREPROCESSED_TEXT = get_mini_dataset(100)
     with open('mir/models/4k_dataset.pickle', "rb") as file:
             MINI_4K_DATASET, MINI_4K_PREPROCESSED_TEXT = pickle.load(file)
     with open('mir/models/10k_dataset.pickle', "rb") as file:
             MINI_10K_DATASET, MINI_10K_PREPROCESSED_TEXT = pickle.load(file)
-    # with open('mir/models/BooleanIR_model.pickle', "rb") as file:
-    #         BOOLEAN_MODEL = pickle.load(file)
-    # with open('mir/models/TF_IDF_model.pickle', "rb") as file:
-    #         TF_IDF_MODEL = pickle.load(file)
-    TF_IDF_MODEL = TF_IDF().prepare(MINI_4K_PREPROCESSED_TEXT, mode='load', save=False)
+    BOOLEAN_MODEL = BooleanIR().prepare(MINI_1K_PREPROCESSED_TEXT, mode='load', save=False)
+    TF_IDF_MODEL = TF_IDF().prepare(MINI_1K_PREPROCESSED_TEXT, mode='load', save=False)
+    FASTTEXT_MODEL = FastText()
+    FASTTEXT_MODEL.prepare(MINI_4K_PREPROCESSED_TEXT, mode='load', save=False)
+    #TRANSFORMER_MODEL = Transformer()
+    #TRANSFORMER_MODEL.prepare(DATASET, mode='load', save=False)
     #ELASTIC_MODEL = News_Elasticsearch(USERNAME, PASSWORD, MINI_4K_DATASET, MINI_4K_DATASET)
     with open('mir/models/Logistic_Regression.pickle', "rb") as file:
             LOGISTIC_REGRESSION_MODEL = pickle.load(file)
     TF_IDF_LR_MODEL = TF_IDF_LR()
     TF_IDF_LR_MODEL.load_TF_IDF_model()
-    # with open('mir/models/Transformer_classification.bin', "rb") as file:
-    #         TRANSFORMER_CLASSIFICATION_MODEL = pickle.load(file)
+    TRANSFORMER_CLASSIFICATION_MODEL = AutoModelForSequenceClassification.from_pretrained("mir/models/Transformer_Classification")
+    TRANSFORMER_CLASSIFICATION_TOKENIZER = AutoTokenizer.from_pretrained("HooshvareLab/bert-fa-zwnj-base")
     with open('mir/models/KMeans_model.pickle', "rb") as file:
             CLUSTER_MODEL = pickle.load(file)
-    # with open('mir/models/TSNE_model.pickle', "rb") as file:
-    #         TSNE_MODEL = pickle.load(file)
-    # with open('mir/models/TSNE_dataset.pickle', "rb") as file:
-    #         TSNE_DATASET = pickle.load(file)
-    FASTTEXT_MODEL = FastText()
-    FASTTEXT_MODEL.prepare(MINI_4K_PREPROCESSED_TEXT, mode='load', save=False)
+    with open('mir/models/Link_analysis.pickle', "rb") as file:
+            LINK_ANALYSIS = pickle.load(file)
     
     
 
@@ -136,7 +137,9 @@ def home(request):
         'header_title': [],
         'data': [],
         'category': [],
-        'plot': []
+        'plot': [],
+        'data_h': [],
+        'data_a': [],
     }
     if request.method == 'POST':
         if BUTTON_SEARCH_BOOLEAN_KEY in request.POST:
@@ -155,7 +158,12 @@ def home(request):
         elif BUTTON_CLUSTER_KEY in request.POST:
             cluster(request, context)
             return render(request, 'mir/cluster.html', context)
+        elif BUTTON_LINK in request.POST:
+            link_analysis(request, context)
+            return render(request, 'mir/link_analysis.html', context)
     return render(request, 'mir/home.html', context)
+
+
 
 
 def cluster(request, context):
@@ -182,7 +190,7 @@ def cluster(request, context):
             context['plot'] = file.read()
 
 def classify(request, context):
-    global PREPROCESSOR, LOGISTIC_REGRESSION_MODEL, TF_IDF_LR_MODEL
+    global PREPROCESSOR, LOGISTIC_REGRESSION_MODEL, TF_IDF_LR_MODEL, TRANSFORMER_CLASSIFICATION_MODEL, TRANSFORMER_CLASSIFICATION_TOKENIZER
     if request.method == 'POST':
         query = request.POST.get(REQUEST_QUERY_KEY, None)
         preprocessed_query = ' '.join(PREPROCESSOR.preprocess(query))
@@ -194,9 +202,10 @@ def classify(request, context):
         elif BUTTON_CLASSIFY_TRANSFORMER_KEY in request.POST:
             TRANSFORMER_CLASSIFICATION_MODEL.eval()
             device = torch.cuda.current_device() if torch.cuda.is_available() else -1
-            pipe = TextClassificationPipeline(model=model, tokenizer=tokenizer, return_all_scores=False, device=device)
-            predictions = pipe(preprocessed_query)
+            pipe = TextClassificationPipeline(model=TRANSFORMER_CLASSIFICATION_MODEL, tokenizer=TRANSFORMER_CLASSIFICATION_TOKENIZER, return_all_scores=True, device=device)
+            predictions = pipe(preprocessed_query)[0]
             probabilities = [prediction['score'] for prediction in predictions]
+            context['category'] = CATEGORIES[CLASSES_CATEGORIES[np.argmax(probabilities)]]
         context['header_title'] = list(CATEGORIES.values())
         context['header_title'].insert(0, 'موضوع')
         context['header'] = np.arange(len(context['header_title']))
@@ -217,11 +226,14 @@ def search_boolean(request, context):
     context['header_title'] = ['عنوان', 'مقدمه', 'متن خبر', 'موضوع']
     context['header'] = ['title', 'intro', 'body', 'category']
     if expansion:
-        result = FASTTEXT_MODEL.predict_with_expansion(query, MINI_4K_DATASET, k=k)
+        result = BOOLEAN_MODEL.predict_with_expansion([query], MINI_1K_DATASET, k=k)
     else:
-        result = FASTTEXT_MODEL.predict(query, MINI_4K_DATASET, k=k)
-    result['category'] = result['category'].apply(lambda x: CATEGORIES[x])
-    context['data'] = result.to_dict('records')
+        result = BOOLEAN_MODEL.predict([query], MINI_1K_DATASET, k=k)
+    if type(result) == str:
+        context['data'] = [{}]
+    else:
+        result['category'] = result['category'].apply(lambda x: CATEGORIES[x])
+        context['data'] = result.to_dict('records')
 
 def search_tf_idf(request, context):
     global CATEGORIES
@@ -231,9 +243,9 @@ def search_tf_idf(request, context):
     context['header_title'] = ['عنوان', 'مقدمه', 'متن خبر', 'موضوع']
     context['header'] = ['title', 'intro', 'body', 'category']
     if expansion:
-        result = TF_IDF_MODEL.predict_with_expansion(query, MINI_4K_DATASET, k=k)
+        result = TF_IDF_MODEL.predict_with_expansion(query, MINI_1K_DATASET, k=k)
     else:
-        result = TF_IDF_MODEL.predict(query, MINI_4K_DATASET, k=k)
+        result = TF_IDF_MODEL.predict(query, MINI_1K_DATASET, k=k)
     result['category'] = result['category'].apply(lambda x: CATEGORIES[x])
     context['data'] = result.to_dict('records')
 
@@ -260,9 +272,9 @@ def search_transformer(request, context):
     context['header_title'] = ['عنوان', 'مقدمه', 'متن خبر', 'موضوع']
     context['header'] = ['title', 'intro', 'body', 'category']
     if expansion:
-        result = TRANSFORMER_MODEL.predict_with_expansion(query, MINI_4K_DATASET, k=k)
+        result = TRANSFORMER_MODEL.predict_with_expansion(query, DATASET, k=k)
     else:
-        result = FASTTEXT_MODEL.predict(query, MINI_4K_DATASET, k=k)
+        result = TRANSFORMER_MODEL.predict(query, DATASET, k=k)
     result['category'] = result['category'].apply(lambda x: CATEGORIES[x])
     context['data'] = result.to_dict('records')
 
@@ -276,6 +288,29 @@ def search_elastic(request, context):
     result['category'] = result['category'].apply(lambda x: CATEGORIES[x])
     context['data'] = result.to_dict('records')
     
+
+
+def link_analysis(request, context):
+    global LINK_ANALYSIS
+    print(list(LINK_ANALYSIS.keys()))
+    k = int(request.POST.get(REQUEST_K_KEY, None))
+    vals = np.array(list(LINK_ANALYSIS['pr'].values()))
+    idx = np.argsort(-vals)
+    pr_df = MINI_10K_DATASET.iloc[idx[:k]]
+    pr_df['category'] = pr_df['category'].apply(lambda x: CATEGORIES[x])
+    context['data'] = pr_df.to_dict('records')
+    vals_h = np.array(list(LINK_ANALYSIS['h'].values()))
+    idx_h = np.argsort(-vals_h)
+    vals_a = np.array(list(LINK_ANALYSIS['a'].values()))
+    idx_a = np.argsort(-vals_a)
+    h_df = MINI_10K_DATASET.iloc[idx_h[:k]]
+    h_df['category'] = h_df['category'].apply(lambda x: CATEGORIES[x])
+    context['data_h'] = h_df.to_dict('records')
+    a_df = MINI_10K_DATASET.iloc[idx_a[:k]]
+    a_df['category'] = a_df['category'].apply(lambda x: CATEGORIES[x])
+    context['data_a'] = a_df.to_dict('records')
+    context['header_title'] = ['عنوان', 'مقدمه', 'متن خبر', 'موضوع']
+    context['header'] = ['title', 'intro', 'body', 'category']
 
 
 def about(request):
