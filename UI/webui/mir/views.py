@@ -18,7 +18,7 @@ from mir.model_classes import *
 import tqdm
 from sklearn.linear_model import LogisticRegression
 import plotly.express as px
-
+#import codecs
 
 
 
@@ -49,8 +49,6 @@ LOGISTIC_REGRESSION_MODEL = None
 TF_IDF_LR_MODEL = None
 TRANSFORMER_CLASSIFICATION_MODEL = None
 CLUSTER_MODEL = None
-TSNE_MODEL = None
-TSNE_DATASET = None
 DATASET = None
 PREPROCESSED_TEXT = None
 MINI_4K_DATASET = None
@@ -94,7 +92,7 @@ def get_mini_dataset(len_each_category=400):
 
 def init_models():
     global DATASET, PREPROCESSED_TEXT, MINI_4K_DATASET, MINI_4K_PREPROCESSED_TEXT, MINI_10K_DATASET, MINI_10K_PREPROCESSED_TEXT,\
-         FASTTEXT_MODEL, LOGISTIC_REGRESSION_MODEL, TF_IDF_LR_MODEL, ELASTIC_MODEL, TF_IDF_MODEL, CLUSTER_MODEL, TSNE_MODEL, TSNE_DATASET
+         FASTTEXT_MODEL, LOGISTIC_REGRESSION_MODEL, TF_IDF_LR_MODEL, ELASTIC_MODEL, TF_IDF_MODEL, CLUSTER_MODEL
     DATASET = read_dataset_from_file()
     with open('mir/models/Preprocessed_texts.pickle', "rb") as file:
         PREPROCESSED_TEXT = pickle.load(file)
@@ -118,9 +116,10 @@ def init_models():
     #         TRANSFORMER_CLASSIFICATION_MODEL = pickle.load(file)
     with open('mir/models/KMeans_model.pickle', "rb") as file:
             CLUSTER_MODEL = pickle.load(file)
-    with open('mir/models/TSNE_model.pickle', "rb") as file:
-            TSNE_MODEL = pickle.load(file)
-    TSNE_DATASET = pd.read_csv('mir/models/TSNE_dataset.csv', "rb")
+    # with open('mir/models/TSNE_model.pickle', "rb") as file:
+    #         TSNE_MODEL = pickle.load(file)
+    # with open('mir/models/TSNE_dataset.pickle', "rb") as file:
+    #         TSNE_DATASET = pickle.load(file)
     FASTTEXT_MODEL = FastText()
     FASTTEXT_MODEL.prepare(MINI_4K_PREPROCESSED_TEXT, mode='load', save=False)
     
@@ -166,9 +165,8 @@ def cluster(request, context):
         query_embed = np.mean(list(map(lambda word: FASTTEXT_MODEL.model.get_word_vector(word), preprocessed_query)), axis=0)
         cluster_label = CLUSTER_MODEL.predict([query_embed.astype('float64')])[0]
         context['category'] = cluster_label
-        fig = px.scatter_3d(TSNE_DATASET, x='x', y='y', z='z', color='labels', opacity=0.5)
-        fig.update_traces(marker=dict(size=3))
-        context['data'] = fig.to_html(full_html=False)
+        with open('./mir/templates/mir/cluster_dataset.html', 'rb', 'utf-8') as file:
+            context['data'] = file.read()
 
 def classify(request, context):
     global PREPROCESSOR, LOGISTIC_REGRESSION_MODEL, TF_IDF_LR_MODEL
