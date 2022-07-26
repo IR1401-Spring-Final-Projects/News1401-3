@@ -10,3 +10,5 @@ test.pickle
 good_clf.pickle
 Preprocessed_texts_title.pickle
 UI/webui/mir/models/dataset.zip
+UI/webui/mir/models/Transformer Classification/pytorch_model.bin
+UI/webui/mir/models/Transformer Classification/config.json
