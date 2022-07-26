@@ -18,7 +18,7 @@ from mir.model_classes import *
 import tqdm
 from sklearn.linear_model import LogisticRegression
 import plotly.express as px
-#import codecs
+import codecs
 
 
 
@@ -136,6 +136,7 @@ def home(request):
         'header_title': [],
         'data': [],
         'category': [],
+        'plot': []
     }
     if request.method == 'POST':
         if BUTTON_SEARCH_BOOLEAN_KEY in request.POST:
@@ -158,15 +159,27 @@ def home(request):
 
 
 def cluster(request, context):
-    global PREPROCESSOR, FASTTEXT_MODEL, TSNE_MODEL, TSNE_DATASET
+    global PREPROCESSOR, FASTTEXT_MODEL, TSNE_MODEL, TSNE_DATASET, MINI_4K_DATASET
     if request.method == 'POST':
         query = request.POST.get(REQUEST_QUERY_KEY, None)
         preprocessed_query = ' '.join(PREPROCESSOR.preprocess(query))
         query_embed = np.mean(list(map(lambda word: FASTTEXT_MODEL.model.get_word_vector(word), preprocessed_query)), axis=0)
         cluster_label = CLUSTER_MODEL.predict([query_embed.astype('float64')])[0]
+        k = int(request.POST.get(REQUEST_K_KEY, None))
+        result = []
+        for idx, row in MINI_4K_DATASET.iterrows():
+            if len(result) == k:
+                break
+            if CLUSTER_MODEL.labels_[idx] == cluster_label:
+                result.append(row)
+        result = pd.DataFrame(result)
+        result['category'] = result['category'].apply(lambda x: CATEGORIES[x])
         context['category'] = cluster_label
-        with open('./mir/templates/mir/cluster_dataset.html', 'rb', 'utf-8') as file:
-            context['data'] = file.read()
+        context['header_title'] = ['عنوان', 'مقدمه', 'متن خبر', 'موضوع']
+        context['header'] = ['title', 'intro', 'body', 'category']
+        context['data'] = result.to_dict('records')
+        with codecs.open('./mir/templates/mir/cluster_dataset.html', 'rb', 'utf-8') as file:
+            context['plot'] = file.read()
 
 def classify(request, context):
     global PREPROCESSOR, LOGISTIC_REGRESSION_MODEL, TF_IDF_LR_MODEL
