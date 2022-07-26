@@ -4,6 +4,6 @@ from . import views
 
 urlpatterns = [
     path('', views.home, name='mir-home'),
-    path('classify/', views.cluster, name='mir-classify'),
-    path('cluster/', views.classify, name='mir-cluster'),
+    path('classify/', views.classify, name='mir-classify'),
+    path('cluster/', views.cluster, name='mir-cluster'),
 ]
