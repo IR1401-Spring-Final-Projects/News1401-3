@@ -93,7 +93,16 @@ class TF_IDF_LR:
             self.vectorizer = pickle.load(file)
 
 
+
 class Transformer:
+
+    def __init__(self, preprocessor=None):
+        self.model = SentenceTransformer('HooshvareLab/bert-fa-zwnj-base')
+        self.preprocessor = preprocessor
+        if torch.cuda.is_available():
+            self.model = self.model.to(torch.device('cuda'))
+        self.embeddings = None
+        self.index = None
 
     def __init__(self, preprocessor=None):
         self.model = SentenceTransformer('HooshvareLab/bert-fa-zwnj-base')
