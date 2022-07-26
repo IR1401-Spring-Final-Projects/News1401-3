@@ -89,8 +89,9 @@ class FastText:
         final_embed = query_embed + lambda_0 * relevant_docs_mean - lambda_1 * irrelevant_docs_mean
         return final_embed
     
-    def predict_query_vector(self, query_embed, dataset, k):
-        dataset_sim = np.array(list(map(lambda doc: self.cosine_sim(query_embed, doc), self.mean_embed)))
+    def predict_with_expansion(self, query, dataset, k):
+        expanded_query_embed = self.expand_query(query)
+        dataset_sim = np.array(list(map(lambda doc: self.cosine_sim(expanded_query_embed, doc), self.mean_embed)))
         idx = np.argsort(-dataset_sim)
         return dataset.iloc[list(idx[:k])]
 
