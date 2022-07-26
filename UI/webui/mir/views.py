@@ -192,7 +192,11 @@ def classify(request, context):
             context['category'] = CATEGORIES[CLASSES_CATEGORIES[predicted_class_code]]
             probabilities = list(LOGISTIC_REGRESSION_MODEL.predict_proba(query_embed)[0])
         elif BUTTON_CLASSIFY_TRANSFORMER_KEY in request.POST:
-            pass
+            TRANSFORMER_CLASSIFICATION_MODEL.eval()
+            device = torch.cuda.current_device() if torch.cuda.is_available() else -1
+            pipe = TextClassificationPipeline(model=model, tokenizer=tokenizer, return_all_scores=False, device=device)
+            predictions = pipe(preprocessed_query)
+            probabilities = [prediction['score'] for prediction in predictions]
         context['header_title'] = list(CATEGORIES.values())
         context['header_title'].insert(0, 'موضوع')
         context['header'] = np.arange(len(context['header_title']))
