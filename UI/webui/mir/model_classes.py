@@ -8,9 +8,10 @@ import pickle
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer, TextClassificationPipeline, AutoTokenizer
-#from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer
 import torch
 import tqdm
+from elasticsearch import Elasticsearch
 
 CATEGORIES = {
     'Politics': 'سیاسی',
@@ -297,7 +298,7 @@ class FastText:
 class News_Elasticsearch:
 
     def __init__(self, username, password, dataset, preprocessed_texts):
-        os.environ['ES_ENDPOINT'] = f"http://{username}:{password}@localhost:9200"
+        os.environ['ES_ENDPOINT'] = f"http://localhost:9200"
         self.es = Elasticsearch(os.environ['ES_ENDPOINT'])
         if not self.es.indices.exists(index='news'):
             self.es.indices.create(index='news')

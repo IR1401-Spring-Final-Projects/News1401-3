@@ -22,7 +22,6 @@ import codecs
 
 
 
-USERNAME, PASSWORD = "elastic", "drykqi7ZNrwdjwCA31sN"
 
 TABLES = [x.__name__ for x in apps.get_models() if not x.__name__.startswith('Auth') and not x.__name__.startswith('Django')][:-6]
 REQUEST_QUERY_KEY = 'query'
@@ -97,7 +96,7 @@ def get_mini_dataset(len_each_category=400):
 def init_models():
     global DATASET, PREPROCESSED_TEXT, MINI_4K_DATASET, MINI_4K_PREPROCESSED_TEXT, MINI_10K_DATASET, MINI_10K_PREPROCESSED_TEXT,\
             MINI_1K_DATASET, MINI_1K_PREPROCESSED_TEXT, FASTTEXT_MODEL, LOGISTIC_REGRESSION_MODEL, TF_IDF_LR_MODEL, ELASTIC_MODEL, TF_IDF_MODEL, CLUSTER_MODEL, TRANSFORMER_CLASSIFICATION_MODEL, \
-            TRANSFORMER_CLASSIFICATION_TOKENIZER, TRANSFORMER_MODEL, LINK_ANALYSIS, BOOLEAN_MODEL
+            TRANSFORMER_CLASSIFICATION_TOKENIZER, TRANSFORMER_MODEL, LINK_ANALYSIS, BOOLEAN_MODEL, ELASTIC_MODEL
     DATASET = read_dataset_from_file()
     with open('mir/models/Preprocessed_texts.pickle', "rb") as file:
         PREPROCESSED_TEXT = pickle.load(file)
@@ -106,23 +105,23 @@ def init_models():
             MINI_4K_DATASET, MINI_4K_PREPROCESSED_TEXT = pickle.load(file)
     with open('mir/models/10k_dataset.pickle', "rb") as file:
             MINI_10K_DATASET, MINI_10K_PREPROCESSED_TEXT = pickle.load(file)
-    BOOLEAN_MODEL = BooleanIR().prepare(MINI_1K_PREPROCESSED_TEXT, mode='load', save=False)
-    TF_IDF_MODEL = TF_IDF().prepare(MINI_1K_PREPROCESSED_TEXT, mode='load', save=False)
-    FASTTEXT_MODEL = FastText()
-    FASTTEXT_MODEL.prepare(MINI_4K_PREPROCESSED_TEXT, mode='load', save=False)
+    # BOOLEAN_MODEL = BooleanIR().prepare(MINI_1K_PREPROCESSED_TEXT, mode='load', save=False)
+    # TF_IDF_MODEL = TF_IDF().prepare(MINI_1K_PREPROCESSED_TEXT, mode='load', save=False)
+    # FASTTEXT_MODEL = FastText()
+    # FASTTEXT_MODEL.prepare(MINI_4K_PREPROCESSED_TEXT, mode='load', save=False)
     #TRANSFORMER_MODEL = Transformer()
     #TRANSFORMER_MODEL.prepare(DATASET, mode='load', save=False)
-    #ELASTIC_MODEL = News_Elasticsearch(USERNAME, PASSWORD, MINI_4K_DATASET, MINI_4K_DATASET)
-    with open('mir/models/Logistic_Regression.pickle', "rb") as file:
-            LOGISTIC_REGRESSION_MODEL = pickle.load(file)
-    TF_IDF_LR_MODEL = TF_IDF_LR()
-    TF_IDF_LR_MODEL.load_TF_IDF_model()
-    TRANSFORMER_CLASSIFICATION_MODEL = AutoModelForSequenceClassification.from_pretrained("mir/models/Transformer_Classification")
-    TRANSFORMER_CLASSIFICATION_TOKENIZER = AutoTokenizer.from_pretrained("HooshvareLab/bert-fa-zwnj-base")
-    with open('mir/models/KMeans_model.pickle', "rb") as file:
-            CLUSTER_MODEL = pickle.load(file)
-    with open('mir/models/Link_analysis.pickle', "rb") as file:
-            LINK_ANALYSIS = pickle.load(file)
+    ELASTIC_MODEL = News_Elasticsearch(1, 2, MINI_10K_DATASET, MINI_10K_PREPROCESSED_TEXT)
+    # with open('mir/models/Logistic_Regression.pickle', "rb") as file:
+    #         LOGISTIC_REGRESSION_MODEL = pickle.load(file)
+    # TF_IDF_LR_MODEL = TF_IDF_LR()
+    # TF_IDF_LR_MODEL.load_TF_IDF_model()
+    # TRANSFORMER_CLASSIFICATION_MODEL = AutoModelForSequenceClassification.from_pretrained("mir/models/Transformer_Classification")
+    # TRANSFORMER_CLASSIFICATION_TOKENIZER = AutoTokenizer.from_pretrained("HooshvareLab/bert-fa-zwnj-base")
+    # with open('mir/models/KMeans_model.pickle', "rb") as file:
+    #         CLUSTER_MODEL = pickle.load(file)
+    # with open('mir/models/Link_analysis.pickle', "rb") as file:
+    #         LINK_ANALYSIS = pickle.load(file)
     
     
 
@@ -151,7 +150,7 @@ def home(request):
         elif BUTTON_SEARCH_TRANSFORMER_KEY in request.POST:
             search_transformer(request, context)
         elif BUTTON_SEARCH_ELASTIC_KEY in request.POST:
-            search_fasttext(request, context)
+            search_elastic(request, context)
         elif BUTTON_CLASSIFY_LOGISTIC_REGRESSION_KEY in request.POST or BUTTON_CLASSIFY_TRANSFORMER_KEY in request.POST:
             classify(request, context)
             return render(request, 'mir/classification.html', context)
