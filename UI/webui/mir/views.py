@@ -1,5 +1,6 @@
 from pickle import FALSE
 from shutil import ExecError
+from unicodedata import category
 from django.shortcuts import redirect, render
 from django.http import HttpResponse, HttpResponseRedirect
 from django.db import connection
@@ -16,7 +17,12 @@ import csv
 from mir.model_classes import *
 import tqdm
 from sklearn.linear_model import LogisticRegression
+import plotly.express as px
 
+
+
+
+USERNAME, PASSWORD = "elastic", "drykqi7ZNrwdjwCA31sN"
 
 TABLES = [x.__name__ for x in apps.get_models() if not x.__name__.startswith('Auth') and not x.__name__.startswith('Django')][:-6]
 REQUEST_QUERY_KEY = 'query'
@@ -38,6 +44,7 @@ BOOLEAN_MODEL = None
 TF_IDF_MODEL = None
 FASTTEXT_MODEL = None
 TRANSFORMER_MODEL = None
+ELASTIC_MODEL = None
 LOGISTIC_REGRESSION_MODEL = None
 TF_IDF_LR_MODEL = None
 TRANSFORMER_CLASSIFICATION_MODEL = None
@@ -86,12 +93,11 @@ def get_mini_dataset(len_each_category=400):
 
 
 def init_models():
-    global DATASET, PREPROCESSED_TEXT, MINI_4K_DATASET, MINI_4K_PREPROCESSED_TEXT, MINI_10K_DATASET, MINI_10K_PREPROCESSED_TEXT, FASTTEXT_MODEL, LOGISTIC_REGRESSION_MODEL, TF_IDF_LR_MODEL
+    global DATASET, PREPROCESSED_TEXT, MINI_4K_DATASET, MINI_4K_PREPROCESSED_TEXT, MINI_10K_DATASET, MINI_10K_PREPROCESSED_TEXT,\
+         FASTTEXT_MODEL, LOGISTIC_REGRESSION_MODEL, TF_IDF_LR_MODEL, ELASTIC_MODEL, TF_IDF_MODEL, CLUSTER_MODEL, TSNE_MODEL, TSNE_DATASET
     DATASET = read_dataset_from_file()
-    print(DATASET)
     with open('mir/models/Preprocessed_texts.pickle', "rb") as file:
         PREPROCESSED_TEXT = pickle.load(file)
-    
     # MINI_4K_DATASET, MINI_4K_PREPROCESSED_TEXT = get_mini_dataset()
     # MINI_10K_DATASET, MINI_10K_PREPROCESSED_TEXT = get_mini_dataset(1000)
     with open('mir/models/4k_dataset.pickle', "rb") as file:
@@ -102,20 +108,19 @@ def init_models():
     #         BOOLEAN_MODEL = pickle.load(file)
     # with open('mir/models/TF_IDF_model.pickle', "rb") as file:
     #         TF_IDF_MODEL = pickle.load(file)
-    # with open('mir/models/Transformer_model.pickle', "rb") as file:
-    #         TRANSFORMER_MODEL = pickle.load(file)
+    TF_IDF_MODEL = TF_IDF().prepare(MINI_4K_PREPROCESSED_TEXT, mode='load', save=False)
+    #ELASTIC_MODEL = News_Elasticsearch(USERNAME, PASSWORD, MINI_4K_DATASET, MINI_4K_DATASET)
     with open('mir/models/Logistic_Regression.pickle', "rb") as file:
             LOGISTIC_REGRESSION_MODEL = pickle.load(file)
     TF_IDF_LR_MODEL = TF_IDF_LR()
     TF_IDF_LR_MODEL.load_TF_IDF_model()
-    # with open('mir/models/Transformer_classification.pickle', "rb") as file:
+    # with open('mir/models/Transformer_classification.bin', "rb") as file:
     #         TRANSFORMER_CLASSIFICATION_MODEL = pickle.load(file)
-    # with open('mir/models/KMeans.pickle', "rb") as file:
-    #         CLUSTER_MODEL = pickle.load(file)
-    # with open('mir/models/TSNE_model.pickle', "rb") as file:
-    #         TSNE_MODEL = pickle.load(file)
-    # with open('mir/models/TSNE_dataset.pickle', "rb") as file:
-    #         TSNE_DATASET = pickle.load(file)
+    with open('mir/models/KMeans_model.pickle', "rb") as file:
+            CLUSTER_MODEL = pickle.load(file)
+    with open('mir/models/TSNE_model.pickle', "rb") as file:
+            TSNE_MODEL = pickle.load(file)
+    TSNE_DATASET = pd.read_csv('mir/models/TSNE_dataset.csv', "rb")
     FASTTEXT_MODEL = FastText()
     FASTTEXT_MODEL.prepare(MINI_4K_PREPROCESSED_TEXT, mode='load', save=False)
     
@@ -148,19 +153,22 @@ def home(request):
             classify(request, context)
             return render(request, 'mir/classification.html', context)
         elif BUTTON_CLUSTER_KEY in request.POST:
-            return redirect('mir-cluster')
+            cluster(request, context)
+            return render(request, 'mir/cluster.html', context)
     return render(request, 'mir/home.html', context)
 
 
-def cluster(request):
+def cluster(request, context):
+    global PREPROCESSOR, FASTTEXT_MODEL, TSNE_MODEL, TSNE_DATASET
     if request.method == 'POST':
-        if BUTTON_CANCEL_KEY in request.POST:
-            return redirect('mir-home')
-        else:
-            query = request.POST.get(REQUEST_QUERY_KEY, None)
-    # plot DATASET and query
-    # plt.to_html()
-    return render(request, 'mir/cluster.html')
+        query = request.POST.get(REQUEST_QUERY_KEY, None)
+        preprocessed_query = ' '.join(PREPROCESSOR.preprocess(query))
+        query_embed = np.mean(list(map(lambda word: FASTTEXT_MODEL.model.get_word_vector(word), preprocessed_query)), axis=0)
+        cluster_label = CLUSTER_MODEL.predict([query_embed.astype('float64')])[0]
+        context['category'] = cluster_label
+        fig = px.scatter_3d(TSNE_DATASET, x='x', y='y', z='z', color='labels', opacity=0.5)
+        fig.update_traces(marker=dict(size=3))
+        context['data'] = fig.to_html(full_html=False)
 
 def classify(request, context):
     global PREPROCESSOR, LOGISTIC_REGRESSION_MODEL, TF_IDF_LR_MODEL
@@ -208,9 +216,9 @@ def search_tf_idf(request, context):
     context['header_title'] = ['عنوان', 'مقدمه', 'متن خبر', 'موضوع']
     context['header'] = ['title', 'intro', 'body', 'category']
     if expansion:
-        result = FASTTEXT_MODEL.predict_with_expansion(query, MINI_4K_DATASET, k=k)
+        result = TF_IDF_MODEL.predict_with_expansion(query, MINI_4K_DATASET, k=k)
     else:
-        result = FASTTEXT_MODEL.predict(query, MINI_4K_DATASET, k=k)
+        result = TF_IDF_MODEL.predict(query, MINI_4K_DATASET, k=k)
     result['category'] = result['category'].apply(lambda x: CATEGORIES[x])
     context['data'] = result.to_dict('records')
 
@@ -237,12 +245,22 @@ def search_transformer(request, context):
     context['header_title'] = ['عنوان', 'مقدمه', 'متن خبر', 'موضوع']
     context['header'] = ['title', 'intro', 'body', 'category']
     if expansion:
-        result = FASTTEXT_MODEL.predict_with_expansion(query, MINI_4K_DATASET, k=k)
+        result = TRANSFORMER_MODEL.predict_with_expansion(query, MINI_4K_DATASET, k=k)
     else:
         result = FASTTEXT_MODEL.predict(query, MINI_4K_DATASET, k=k)
     result['category'] = result['category'].apply(lambda x: CATEGORIES[x])
     context['data'] = result.to_dict('records')
 
+def search_elastic(request, context):
+    global CATEGORIES
+    query = request.POST.get(REQUEST_QUERY_KEY, None)
+    k = int(request.POST.get(REQUEST_K_KEY, None))
+    context['header_title'] = ['عنوان', 'مقدمه', 'متن خبر', 'موضوع']
+    context['header'] = ['title', 'intro', 'body', 'category']
+    result = ELASTIC_MODEL.search(query, k=k)
+    result['category'] = result['category'].apply(lambda x: CATEGORIES[x])
+    context['data'] = result.to_dict('records')
+    
 
 
 def about(request):

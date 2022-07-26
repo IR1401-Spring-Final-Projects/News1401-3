@@ -5,6 +5,7 @@ import hazm
 import re
 from string import punctuation
 import pickle
+import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 
 CATEGORIES = {
@@ -92,7 +93,69 @@ class TF_IDF_LR:
         with open(path, "rb") as file:
             self.vectorizer = pickle.load(file)
 
+class TF_IDF:
 
+    def __init__(self):
+        self.vectorizer = TfidfVectorizer()
+        self.vectors = None
+        self.words = None
+        self.dense_vectors_df = None
+
+    def fit_transform_vectorizer(self, dataset):
+        self.vectors = self.vectorizer.fit_transform(list(map(lambda doc: ' '.join(doc), dataset)))
+        self.words = self.vectorizer.get_feature_names_out()
+        dense_vectors = self.vectors.todense().tolist()
+        self.dense_vectors_df = pd.DataFrame(dense_vectors, columns=self.words)
+
+    def predict(self, query, dataset, k):
+        query = ' '.join(Preprocessor(stopwords_path='mir/models/stopwords.txt').preprocess(query))
+        query_transform = self.vectorizer.transform([query]).todense().tolist()[0]
+        dense_vectors = self.dense_vectors_df.values.tolist()
+        df_cosine_sim = list(map(lambda doc: self.cosine_sim(query_transform, doc), dense_vectors))
+        self.dense_vectors_df['query_sim'] = df_cosine_sim
+        indices = self.dense_vectors_df.nlargest(k, 'query_sim').index
+        self.dense_vectors_df = self.dense_vectors_df.drop(columns=['query_sim'])
+        return dataset.iloc[indices]
+    
+    def expand_query(self, query, k=5, lambda_0=1, lambda_1=1):
+        query = ' '.join(Preprocessor(stopwords_path='mir/models/stopwords.txt').preprocess(query))
+        query_transform = self.vectorizer.transform([query]).todense().tolist()[0]
+        dense_vectors = self.dense_vectors_df.values.tolist()
+        dataset_sim = np.array(list(map(lambda doc: self.cosine_sim(query_transform, doc), dense_vectors)))
+        idx = np.argsort(-dataset_sim)
+        relevant_docs_mean = np.mean(dense_vectors[list(idx[:k]), :], axis=0)
+        irrelevant_docs_mean = np.mean(dense_vectors[list(idx[-k:]), :], axis=0)
+        final_embed = query_transform + lambda_0 * relevant_docs_mean - lambda_1 * irrelevant_docs_mean
+        return final_embed
+
+    def predict_with_expansion(self, query, dataset, k):
+        expanded_query_embed = self.expand_query(query)
+        dataset_sim = np.array(list(map(lambda doc: self.cosine_sim(expanded_query_embed, doc), self.mean_embed)))
+        idx = np.argsort(-dataset_sim)
+        return dataset.iloc[list(idx[:k])]
+
+
+    def cosine_sim(self, query, doc):
+        return np.dot(query, doc) / (np.linalg.norm(query) * np.linalg.norm(doc))
+
+    def save_TF_IDF_model(self, path="mir/models/TF_IDF_model.pickle"):
+        with open(path, "wb") as file:
+            pickle.dump(self, file)
+
+    def load_TF_IDF_model(self, path="mir/models/TF_IDF_model.pickle"):
+        with open(path, "rb") as file:
+            return pickle.load(file)
+
+    def prepare(self, dataset, mode, save=False):
+        model = None
+        if mode == 'train':
+            self.fit_transform_vectorizer(dataset)
+            model = self
+        if mode == 'load':
+            model = self.load_TF_IDF_model()
+        if save:
+            self.save_TF_IDF_model()
+        return model
 
 class Transformer:
 
@@ -229,3 +292,28 @@ class FastText:
             self.load_FastText_model()
         if save:
             self.save_FastText_model()
+
+
+class News_Elasticsearch:
+
+    def __init__(self, username, password, dataset, preprocessed_texts):
+        os.environ['ES_ENDPOINT'] = f"http://{username}:{password}@localhost:9200"
+        self.es = Elasticsearch(os.environ['ES_ENDPOINT'])
+        if not self.es.indices.exists(index='news'):
+            self.es.indices.create(index='news')
+        self.dataset = dataset
+        self.index_dataset(preprocessed_texts)
+
+    def index_dataset(self, preprocessed_texts):
+        for i in tqdm(range(len(preprocessed_texts))):
+            self.es.index(index='news', id=i, document={'text': preprocessed_texts[i]})
+
+    def search(self, preprocessed_query, k):
+        query = {
+            'match': {
+                'text': preprocessed_query
+            }
+        }
+        hits = self.es.search(index='news', query=query, size=k)['hits']['hits']
+        indices = [hit['_id'] for hit in hits]
+        return self.dataset.iloc[indices]
