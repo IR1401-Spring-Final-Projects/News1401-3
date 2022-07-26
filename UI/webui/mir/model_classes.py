@@ -71,8 +71,66 @@ class Preprocessor:
         return [word for word in words if word not in self.stopwords]
 
 
+class Transformer:
 
+    def __init__(self, preprocessor=None):
+        self.model = SentenceTransformer('HooshvareLab/bert-fa-zwnj-base')
+        self.preprocessor = preprocessor
+        if torch.cuda.is_available():
+            self.model = self.model.to(torch.device('cuda'))
+        self.embeddings = None
+        self.index = None
 
+    def train_embeddings(self, train_dataset: list):
+        if type(train_dataset[0]) == list:
+            train_dataset = list(map(lambda doc: ' '.join(doc), train_dataset))
+        self.embeddings = self.model.encode(train_dataset, show_progress_bar=True)
+        self.embeddings = np.array(
+            [embedding for embedding in self.embeddings]).astype('float32')
+
+    def make_index(self, dataset: list):
+        self.index = faiss.IndexFlatL2(self.embeddings.shape[1])
+        self.index = faiss.IndexIDMap(self.index)
+        self.index.add_with_ids(self.embeddings, np.arange(len(dataset)).astype('int64'))
+
+    def save_embeddings(self, path='Transformer_model.pickle'):
+        with open(path, 'wb') as file:
+            pickle.dump(self.embeddings, file)
+
+    def load_embeddings(self, path='Transformer_model.pickle'):
+        with open(path, 'rb') as file:
+            self.embeddings = pickle.load(file)
+
+    def predict(self, query: str, dataset: pd.DataFrame, k=10):
+        if self.preprocessor:
+            query = ' '.join(self.preprocessor.preprocess(query))
+        vector = self.model.encode(list([query]))
+        D, I = self.index.search(np.array(vector).astype('float32'), k=k)
+        return dataset.iloc[I.flatten().tolist()]
+
+    def expand_query(self, query, dataset, k=5, lambda_0=1, lambda_1=1):
+        if self.preprocessor:
+            query = ' '.join(self.preprocessor.preprocess(query))
+        query_embed = self.model.encode(list([query]))
+        prelim_D, prelim_I = self.index.search(np.array(query_embed).astype('float32'), k=len(dataset))
+        relevant_docs_mean = np.mean([self.model.encode(list([title])) for title in dataset.iloc[prelim_I.flatten().tolist()[:k]]['title']], axis=0)
+        irrelevant_docs_mean = np.mean([self.model.encode(list([title])) for title in dataset.iloc[prelim_I.flatten().tolist()[-k:]]['title']], axis=0)
+        final_embed = query_embed + lambda_0 * relevant_docs_mean - lambda_1 * irrelevant_docs_mean
+        return final_embed
+    
+    def predict_with_expansion(self, query, dataset, k):
+        expanded_query_embed = self.expand_query(query, dataset)
+        D, I = self.index.search(np.array(expanded_query_embed).astype('float32'), k=k)
+        return dataset.iloc[I.flatten().tolist()]
+
+    def prepare(self, dataset, mode, save=False):
+        if mode == 'train':
+            self.train_embeddings(dataset)
+        if mode == 'load':
+            self.load_embeddings()
+        if save:
+            self.save_embeddings()
+        self.make_index(dataset)
 
 
 class FastText:
