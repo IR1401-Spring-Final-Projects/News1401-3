@@ -5,6 +5,33 @@ import hazm
 import re
 from string import punctuation
 
+CATEGORIES = {
+    'Politics': 'سیاسی',
+    'World': 'جهانی',
+    'Economy': 'اقتصادی',
+    'Society': 'اجتماعی',
+    'City': 'شهری',
+    'Sport': 'ورزشی',
+    'Science': 'علمی',
+    'Culture': 'فرهنگی',
+    'IT': 'فناوری اطلاعات',
+    'LifeSkills': 'مهارت‌های زندگی',
+}
+
+CATEGORIES_CLASSES = {
+    'Politics': 0,
+    'World': 1,
+    'Economy': 2,
+    'Society': 3,
+    'City': 4,
+    'Sport': 5,
+    'Science': 6,
+    'Culture': 7,
+    'IT': 8,
+    'LifeSkills': 9,
+}
+
+
 
 class Preprocessor:
 
