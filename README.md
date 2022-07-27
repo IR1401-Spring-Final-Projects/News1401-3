@@ -101,6 +101,13 @@ cd UI/webui
 python manage.py runserver
 ```
 
+<div dir="auto" align="justify">
+    <p style='direction:rtl;text-align:justify;'>
+       اکنون می‌توانید با باز کردن مرورگر و رفتن به آدرس <a href="http://localhost:8000"> localhost:8000 </a> از رابط کاربری استفاده کنید. 
+    </p>
+</div>
+
+
 ---
 
 <div>
