@@ -1,18 +1,20 @@
-import fasttext
 import os
-import numpy as np
-import hazm
 import re
-from string import punctuation
-import pickle
-import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
-from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer, TextClassificationPipeline, AutoTokenizer
-from sentence_transformers import SentenceTransformer
-import torch
+import hazm
 import tqdm
+import torch
 import faiss
-#from elasticsearch import Elasticsearch
+import pickle
+import fasttext
+import numpy as np
+import pandas as pd
+from string import punctuation
+from sentence_transformers import SentenceTransformer
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer, \
+    TextClassificationPipeline, AutoTokenizer
+
+from elasticsearch import Elasticsearch
 
 CATEGORIES = {
     'Politics': 'سیاسی',
@@ -99,6 +101,7 @@ class TF_IDF_LR:
         with open(path, "rb") as file:
             self.vectorizer = pickle.load(file)
 
+
 class TF_IDF:
 
     def __init__(self):
@@ -122,7 +125,7 @@ class TF_IDF:
         indices = self.dense_vectors_df.nlargest(k, 'query_sim').index
         self.dense_vectors_df = self.dense_vectors_df.drop(columns=['query_sim'])
         return dataset.iloc[indices]
-    
+
     def expand_query(self, query, k=5, lambda_0=1, lambda_1=1):
         query = ' '.join(Preprocessor(stopwords_path='mir/models/stopwords.txt').preprocess(query))
         query_transform = self.vectorizer.transform([query]).todense().tolist()[0]
@@ -142,7 +145,6 @@ class TF_IDF:
         indices = self.dense_vectors_df.nlargest(k, 'query_sim').index
         self.dense_vectors_df = self.dense_vectors_df.drop(columns=['query_sim'])
         return dataset.iloc[indices]
-
 
     def cosine_sim(self, query, doc):
         return np.dot(query, doc) / (np.linalg.norm(query) * np.linalg.norm(doc))
@@ -166,6 +168,7 @@ class TF_IDF:
             self.save_TF_IDF_model()
         return model
 
+
 class Transformer:
 
     def __init__(self, preprocessor=None):
@@ -175,7 +178,6 @@ class Transformer:
         #     self.model = self.model.to(torch.device('cuda'))
         self.embeddings = None
         self.index = None
-
 
     def train_embeddings(self, train_dataset: list):
         if type(train_dataset[0]) == list:
@@ -209,8 +211,12 @@ class Transformer:
             query = ' '.join(self.preprocessor.preprocess(query))
         query_embed = self.model.encode(list([query]))
         prelim_D, prelim_I = self.index.search(np.array(query_embed).astype('float32'), k=len(dataset))
-        relevant_docs_mean = np.mean([self.model.encode(list([title])) for title in dataset.iloc[prelim_I.flatten().tolist()[:k]]['title']], axis=0)
-        irrelevant_docs_mean = np.mean([self.model.encode(list([title])) for title in dataset.iloc[prelim_I.flatten().tolist()[-k:]]['title']], axis=0)
+        relevant_docs_mean = np.mean(
+            [self.model.encode(list([title])) for title in dataset.iloc[prelim_I.flatten().tolist()[:k]]['title']],
+            axis=0)
+        irrelevant_docs_mean = np.mean(
+            [self.model.encode(list([title])) for title in dataset.iloc[prelim_I.flatten().tolist()[-k:]]['title']],
+            axis=0)
         final_embed = query_embed + lambda_0 * relevant_docs_mean - lambda_1 * irrelevant_docs_mean
         return final_embed
 
@@ -298,17 +304,20 @@ class FastText:
 
 class News_Elasticsearch:
 
-    def __init__(self, username, password, dataset, preprocessed_texts):
-        os.environ['ES_ENDPOINT'] = f"http://localhost:9200"
-        #self.es = Elasticsearch(os.environ['ES_ENDPOINT'])
-        if not self.es.indices.exists(index='news'):
+    def __init__(self, dataset, preprocessed_texts, username, password):
+        os.environ['ES_ENDPOINT'] = f"http://{username}:{password}@localhost:9200"
+        self.es = Elasticsearch(os.environ['ES_ENDPOINT'])
+        if self.es.indices.exists(index='news'):
+            self.es.indices.delete(index='news')
+        else:
             self.es.indices.create(index='news')
         self.dataset = dataset
         self.index_dataset(preprocessed_texts)
 
     def index_dataset(self, preprocessed_texts):
-        for i in tqdm(range(len(preprocessed_texts))):
-            self.es.index(index='news', id=i, document={'text': preprocessed_texts[i]})
+        for i in range(len(preprocessed_texts)):
+            text = ' '.join(preprocessed_texts[i])
+            self.es.index(index='news', id=i, document={'text': text})
 
     def search(self, preprocessed_query, k):
         query = {
@@ -373,7 +382,7 @@ class BooleanIR:
         query_result = list(set(query_result) - set(query_result_BUT))
         k = min(k, len(query_result))
         return dataset.iloc[query_result[:k]]
-    
+
     def expand_query(self, query, dataset, lambda_0=0.5, lambda_1=0.5):
         query = ' '.join(Preprocessor(stopwords_path='mir/models/stopwords.txt').preprocess(query))
         query_transform = self.vectorizer.transform([query]).todense().tolist()[0]
@@ -386,7 +395,7 @@ class BooleanIR:
         return final_embed
 
     def predict_with_expansion(self, query, dataset, k):
-        expanded_query  = self.expand_query(query[0], dataset)
+        expanded_query = self.expand_query(query[0], dataset)
         return self.predict([expanded_query], dataset, k, expansion=True)
 
     def cosine_sim(self, query, doc):
