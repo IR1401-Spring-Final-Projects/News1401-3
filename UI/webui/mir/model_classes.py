@@ -7,6 +7,12 @@ from string import punctuation
 import pickle
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer, TextClassificationPipeline, AutoTokenizer
+from sentence_transformers import SentenceTransformer
+import torch
+import tqdm
+import faiss
+#from elasticsearch import Elasticsearch
 
 CATEGORIES = {
     'Politics': 'سیاسی',
@@ -120,7 +126,7 @@ class TF_IDF:
     def expand_query(self, query, k=5, lambda_0=1, lambda_1=1):
         query = ' '.join(Preprocessor(stopwords_path='mir/models/stopwords.txt').preprocess(query))
         query_transform = self.vectorizer.transform([query]).todense().tolist()[0]
-        dense_vectors = self.dense_vectors_df.values.tolist()
+        dense_vectors = np.array(self.dense_vectors_df.values.tolist())
         dataset_sim = np.array(list(map(lambda doc: self.cosine_sim(query_transform, doc), dense_vectors)))
         idx = np.argsort(-dataset_sim)
         relevant_docs_mean = np.mean(dense_vectors[list(idx[:k]), :], axis=0)
@@ -130,9 +136,12 @@ class TF_IDF:
 
     def predict_with_expansion(self, query, dataset, k):
         expanded_query_embed = self.expand_query(query)
-        dataset_sim = np.array(list(map(lambda doc: self.cosine_sim(expanded_query_embed, doc), self.mean_embed)))
-        idx = np.argsort(-dataset_sim)
-        return dataset.iloc[list(idx[:k])]
+        dense_vectors = self.dense_vectors_df.values.tolist()
+        df_cosine_sim = list(map(lambda doc: self.cosine_sim(expanded_query_embed, doc), dense_vectors))
+        self.dense_vectors_df['query_sim'] = df_cosine_sim
+        indices = self.dense_vectors_df.nlargest(k, 'query_sim').index
+        self.dense_vectors_df = self.dense_vectors_df.drop(columns=['query_sim'])
+        return dataset.iloc[indices]
 
 
     def cosine_sim(self, query, doc):
@@ -162,18 +171,11 @@ class Transformer:
     def __init__(self, preprocessor=None):
         self.model = SentenceTransformer('HooshvareLab/bert-fa-zwnj-base')
         self.preprocessor = preprocessor
-        if torch.cuda.is_available():
-            self.model = self.model.to(torch.device('cuda'))
+        # if torch.cuda.is_available():
+        #     self.model = self.model.to(torch.device('cuda'))
         self.embeddings = None
         self.index = None
 
-    def __init__(self, preprocessor=None):
-        self.model = SentenceTransformer('HooshvareLab/bert-fa-zwnj-base')
-        self.preprocessor = preprocessor
-        if torch.cuda.is_available():
-            self.model = self.model.to(torch.device('cuda'))
-        self.embeddings = None
-        self.index = None
 
     def train_embeddings(self, train_dataset: list):
         if type(train_dataset[0]) == list:
@@ -187,11 +189,11 @@ class Transformer:
         self.index = faiss.IndexIDMap(self.index)
         self.index.add_with_ids(self.embeddings, np.arange(len(dataset)).astype('int64'))
 
-    def save_embeddings(self, path='Transformer_model.pickle'):
+    def save_embeddings(self, path='mir/models/Transformer_model.pickle'):
         with open(path, 'wb') as file:
             pickle.dump(self.embeddings, file)
 
-    def load_embeddings(self, path='Transformer_model.pickle'):
+    def load_embeddings(self, path='mir/models/Transformer_model.pickle'):
         with open(path, 'rb') as file:
             self.embeddings = pickle.load(file)
 
@@ -297,8 +299,8 @@ class FastText:
 class News_Elasticsearch:
 
     def __init__(self, username, password, dataset, preprocessed_texts):
-        os.environ['ES_ENDPOINT'] = f"http://{username}:{password}@localhost:9200"
-        self.es = Elasticsearch(os.environ['ES_ENDPOINT'])
+        os.environ['ES_ENDPOINT'] = f"http://localhost:9200"
+        #self.es = Elasticsearch(os.environ['ES_ENDPOINT'])
         if not self.es.indices.exists(index='news'):
             self.es.indices.create(index='news')
         self.dataset = dataset
@@ -317,3 +319,94 @@ class News_Elasticsearch:
         hits = self.es.search(index='news', query=query, size=k)['hits']['hits']
         indices = [hit['_id'] for hit in hits]
         return self.dataset.iloc[indices]
+
+
+class BooleanIR:
+
+    def __init__(self):
+        self.vectorizer = CountVectorizer(binary=True)
+        self.vectors = None
+        self.words = None
+        self.dense_vectors_df = None
+
+    def fit_transform_vectorizer(self, dataset):
+        self.vectors = self.vectorizer.fit_transform(list(map(lambda doc: ' '.join(doc), dataset)))
+        self.words = self.vectorizer.get_feature_names_out()
+        dense_vectors = self.vectors.todense().tolist()
+        self.dense_vectors_df = pd.DataFrame(dense_vectors, columns=self.words)
+
+    def preprocess_query(self, query):
+        preprocessor = Preprocessor(stopwords_path='mir/models/stopwords.txt')
+        preprocessed_query = []
+        for subquery in query:
+            if subquery[0] == '-':
+                preprocessed_query.append('-' + (' '.join(preprocessor.preprocess(subquery[1:]))))
+            else:
+                preprocessed_query.append(' '.join(preprocessor.preprocess(subquery)))
+        return preprocessed_query
+
+    def predict(self, query, dataset, k, expansion=False):
+        if not expansion:
+            query = self.preprocess_query(query)
+        query_result = []
+        query_result_BUT = []
+        for subquery in query:
+            is_subquery_but = False
+            if subquery[0] == '-':
+                is_subquery_but = True
+                subquery = subquery[1:]
+            if expansion:
+                query_transform = query[0]
+            else:
+                query_transform = np.array(self.vectorizer.transform([subquery]).todense().tolist()[0])
+            query_indices = np.argwhere(query_transform >= 0.5)
+            if len(query_indices) > 0:
+                query_indices = query_indices[0]
+            else:
+                return 'چیزی برای نمایش نیست! :('
+            for index, doc in self.dense_vectors_df.iterrows():
+                if all(np.take(doc, query_indices)):
+                    if is_subquery_but:
+                        query_result_BUT.append(index)
+                    else:
+                        query_result.append(index)
+        query_result = list(set(query_result) - set(query_result_BUT))
+        k = min(k, len(query_result))
+        return dataset.iloc[query_result[:k]]
+    
+    def expand_query(self, query, dataset, lambda_0=0.5, lambda_1=0.5):
+        query = ' '.join(Preprocessor(stopwords_path='mir/models/stopwords.txt').preprocess(query))
+        query_transform = self.vectorizer.transform([query]).todense().tolist()[0]
+        dense_vectors = np.array(self.dense_vectors_df.values.tolist())
+        dataset_sim = np.array(list(map(lambda doc: self.cosine_sim(query_transform, doc), dense_vectors)))
+        idx = np.argsort(-dataset_sim)
+        relevant_docs_mean = np.mean(dense_vectors[list(idx[:2]), :], axis=0)
+        irrelevant_docs_mean = np.mean(dense_vectors[list(idx[-2:]), :], axis=0)
+        final_embed = query_transform + lambda_0 * relevant_docs_mean - lambda_1 * irrelevant_docs_mean
+        return final_embed
+
+    def predict_with_expansion(self, query, dataset, k):
+        expanded_query  = self.expand_query(query[0], dataset)
+        return self.predict([expanded_query], dataset, k, expansion=True)
+
+    def cosine_sim(self, query, doc):
+        return np.dot(query, doc) / (np.linalg.norm(query) * np.linalg.norm(doc))
+
+    def save_boolean_model(self, path='mir/models/BooleanIR_model.pickle'):
+        with open(path, "wb") as file:
+            pickle.dump(self, file)
+
+    def load_boolean_model(self, path='mir/models/BooleanIR_model.pickle'):
+        with open(path, "rb") as file:
+            return pickle.load(file)
+
+    def prepare(self, dataset, mode, save=False):
+        model = None
+        if mode == 'train':
+            self.fit_transform_vectorizer(dataset)
+            model = self
+        if mode == 'load':
+            model = self.load_boolean_model()
+        if save:
+            self.save_boolean_model()
+        return model
