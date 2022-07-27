@@ -13,4 +13,5 @@ UI/webui/mir/models/dataset.zip
 UI/webui/mir/models/Transformer Classification/pytorch_model.bin
 UI/webui/mir/models/Transformer Classification/config.json
 *.pyc
+*.*.pyc
 .ipynb_checkpoints
