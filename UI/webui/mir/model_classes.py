@@ -1,18 +1,18 @@
-import fasttext
 import os
-import numpy as np
-import hazm
 import re
-from string import punctuation
-import pickle
-import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
-from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer, TextClassificationPipeline, \
-    AutoTokenizer
-from sentence_transformers import SentenceTransformer
-import torch
+import hazm
 import tqdm
+import torch
 import faiss
+import pickle
+import fasttext
+import numpy as np
+import pandas as pd
+from string import punctuation
+from sentence_transformers import SentenceTransformer
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer, \
+    TextClassificationPipeline, AutoTokenizer
 
 from elasticsearch import Elasticsearch
 
