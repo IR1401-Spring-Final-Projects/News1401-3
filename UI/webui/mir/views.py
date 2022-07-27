@@ -1,54 +1,53 @@
-from pickle import FALSE
-from shutil import ExecError
-from unicodedata import category
-from django.shortcuts import redirect, render
-from django.http import HttpResponse, HttpResponseRedirect
-from django.db import connection
-from django.urls import reverse
-from django.core.exceptions import FieldError
-from django.db.models import Field
-from django.apps import apps
-import pickle
-import zipfile
 import os
-from matplotlib.style import context
-import pandas as pd
 import csv
-from mir.model_classes import *
 import tqdm
-from sklearn.linear_model import LogisticRegression
-import plotly.express as px
-import codecs
 import json
+import pickle
+import codecs
+import zipfile
+import pandas as pd
+from pickle import FALSE
+import plotly.express as px
+from shutil import ExecError
+from django.apps import apps
+from django.urls import reverse
+from mir.model_classes import *
+from unicodedata import category
+from django.db import connection
+from django.db.models import Field
+from matplotlib.style import context
+from django.shortcuts import redirect, render
+from django.core.exceptions import FieldError
+from sklearn.linear_model import LogisticRegression
+from django.http import HttpResponse, HttpResponseRedirect
 
-TABLES = [x.__name__ for x in apps.get_models() if
-          not x.__name__.startswith('Auth') and not x.__name__.startswith('Django')][:-6]
-REQUEST_QUERY_KEY = 'query'
 REQUEST_K_KEY = 'k'
-BUTTON_SEARCH_BOOLEAN_KEY = 'boolean'
+REQUEST_QUERY_KEY = 'query'
+BUTTON_LINK = 'linkanalysis'
+BUTTON_CLUSTER_KEY = 'cluster'
 BUTTON_SEARCH_TF_IDF_KEY = 'tfidf'
+BUTTON_SEARCH_BOOLEAN_KEY = 'boolean'
+BUTTON_SEARCH_ELASTIC_KEY = 'elastic'
 BUTTON_SEARCH_FASTTEXT_KEY = 'fasttext'
 BUTTON_SEARCH_TRANSFORMER_KEY = 'transformer_search'
-BUTTON_SEARCH_ELASTIC_KEY = 'elastic'
-BUTTON_CLASSIFY_LOGISTIC_REGRESSION_KEY = 'logistic_regression'
 BUTTON_CLASSIFY_TRANSFORMER_KEY = 'transformer_classification'
-BUTTON_CLUSTER_KEY = 'cluster'
+BUTTON_CLASSIFY_LOGISTIC_REGRESSION_KEY = 'logistic_regression'
 CHECK_EXPANSION_KEY = 'queryexpansion'
-BUTTON_LINK = 'linkanalysis'
 
 INITIALIZED = False
 
-BOOLEAN_MODEL = None
 TF_IDF_MODEL = None
-FASTTEXT_MODEL = None
-TRANSFORMER_MODEL = None
+BOOLEAN_MODEL = None
 ELASTIC_MODEL = None
-LOGISTIC_REGRESSION_MODEL = None
-TF_IDF_LR_MODEL = None
-TRANSFORMER_CLASSIFICATION_MODEL = None
-TRANSFORMER_CLASSIFICATION_TOKENIZER = None
 CLUSTER_MODEL = None
 LINK_ANALYSIS = None
+FASTTEXT_MODEL = None
+TF_IDF_LR_MODEL = None
+TRANSFORMER_MODEL = None
+LOGISTIC_REGRESSION_MODEL = None
+TRANSFORMER_CLASSIFICATION_MODEL = None
+TRANSFORMER_CLASSIFICATION_TOKENIZER = None
+
 DATASET = None
 PREPROCESSED_TEXT = None
 MINI_1K_DATASET = None
@@ -57,6 +56,7 @@ MINI_4K_DATASET = None
 MINI_4K_PREPROCESSED_TEXT = None
 MINI_10K_DATASET = None
 MINI_10K_PREPROCESSED_TEXT = None
+
 PREPROCESSOR = Preprocessor(stopwords_path='mir/models/stopwords.txt')
 
 
@@ -134,7 +134,7 @@ def home(request):
         init_models()
         INITIALIZED = True
     context = {
-        'tables': TABLES,
+        'tables': [],
         'header': [],
         'header_title': [],
         'data': [],
