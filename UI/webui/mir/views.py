@@ -94,38 +94,47 @@ def get_mini_dataset(len_each_category=400):
 
 
 def init_models():
-    global DATASET, PREPROCESSED_TEXT, MINI_4K_DATASET, MINI_4K_PREPROCESSED_TEXT, MINI_10K_DATASET, MINI_10K_PREPROCESSED_TEXT, \
-        MINI_1K_DATASET, MINI_1K_PREPROCESSED_TEXT, FASTTEXT_MODEL, LOGISTIC_REGRESSION_MODEL, TF_IDF_LR_MODEL, ELASTIC_MODEL, TF_IDF_MODEL, CLUSTER_MODEL, TRANSFORMER_CLASSIFICATION_MODEL, \
+    global DATASET, MINI_4K_DATASET, MINI_4K_PREPROCESSED_TEXT, MINI_10K_DATASET, MINI_10K_PREPROCESSED_TEXT, \
+        MINI_1K_DATASET, MINI_1K_PREPROCESSED_TEXT, FASTTEXT_MODEL, LOGISTIC_REGRESSION_MODEL, TF_IDF_LR_MODEL, \
+        ELASTIC_MODEL, TF_IDF_MODEL, CLUSTER_MODEL, TRANSFORMER_CLASSIFICATION_MODEL, \
         TRANSFORMER_CLASSIFICATION_TOKENIZER, TRANSFORMER_MODEL, LINK_ANALYSIS, BOOLEAN_MODEL, ELASTIC_MODEL
+
+    # Load dataset and mini-datasets
     DATASET = read_dataset_from_file()
-    # with open('mir/models/Preprocessed_texts.pickle', "rb") as file:
-    #     PREPROCESSED_TEXT = pickle.load(file)
     MINI_1K_DATASET, MINI_1K_PREPROCESSED_TEXT = get_mini_dataset(100)
     with open('mir/models/4k_dataset.pickle', "rb") as file:
         MINI_4K_DATASET, MINI_4K_PREPROCESSED_TEXT = pickle.load(file)
     with open('mir/models/10k_dataset.pickle', "rb") as file:
         MINI_10K_DATASET, MINI_10K_PREPROCESSED_TEXT = pickle.load(file)
-    # BOOLEAN_MODEL = BooleanIR().prepare(MINI_1K_PREPROCESSED_TEXT, mode='load', save=False)
-    # TF_IDF_MODEL = TF_IDF().prepare(MINI_1K_PREPROCESSED_TEXT, mode='load', save=False)
-    # FASTTEXT_MODEL = FastText()
-    # FASTTEXT_MODEL.prepare(MINI_4K_PREPROCESSED_TEXT, mode='load', save=False)
+
+    # Load search models
+    BOOLEAN_MODEL = BooleanIR().prepare(MINI_1K_PREPROCESSED_TEXT, mode='load', save=False)
+    TF_IDF_MODEL = TF_IDF().prepare(MINI_1K_PREPROCESSED_TEXT, mode='load', save=False)
+    FASTTEXT_MODEL = FastText()
+    FASTTEXT_MODEL.prepare(MINI_4K_PREPROCESSED_TEXT, mode='load', save=False)
     TRANSFORMER_MODEL = Transformer()
     TRANSFORMER_MODEL.prepare(DATASET, mode='load', save=False)
-    # with open("mir/Elasticsearch_Credentials.json", "r") as file:
-    #     credentials = json.load(file)
-    # username, password = credentials["USERNAME"], credentials["PASSWORD"]
-    # ELASTIC_MODEL = News_Elasticsearch(MINI_10K_DATASET, MINI_10K_PREPROCESSED_TEXT, username, password)
-    # with open('mir/models/Logistic_Regression.pickle', "rb") as file:
-    #     LOGISTIC_REGRESSION_MODEL = pickle.load(file)
-    # TF_IDF_LR_MODEL = TF_IDF_LR()
-    # TF_IDF_LR_MODEL.load_TF_IDF_model()
-    # TRANSFORMER_CLASSIFICATION_MODEL = AutoModelForSequenceClassification.from_pretrained(
-    #     "mir/models/Transformer_Classification")
-    # TRANSFORMER_CLASSIFICATION_TOKENIZER = AutoTokenizer.from_pretrained("HooshvareLab/bert-fa-zwnj-base")
-    # with open('mir/models/KMeans_model.pickle', "rb") as file:
-    #     CLUSTER_MODEL = pickle.load(file)
-    # with open('mir/models/Link_analysis.pickle', "rb") as file:
-    #     LINK_ANALYSIS = pickle.load(file)
+    with open("mir/Elasticsearch_Credentials.json", "r") as file:
+        credentials = json.load(file)
+    username, password = credentials["USERNAME"], credentials["PASSWORD"]
+    ELASTIC_MODEL = News_Elasticsearch(MINI_4K_DATASET, MINI_4K_PREPROCESSED_TEXT, username, password)
+
+    # Load classification models
+    with open('mir/models/Logistic_Regression.pickle', "rb") as file:
+        LOGISTIC_REGRESSION_MODEL = pickle.load(file)
+    TF_IDF_LR_MODEL = TF_IDF_LR()
+    TF_IDF_LR_MODEL.load_TF_IDF_model()
+    TRANSFORMER_CLASSIFICATION_MODEL = AutoModelForSequenceClassification.from_pretrained(
+        "mir/models/Transformer_Classification")
+    TRANSFORMER_CLASSIFICATION_TOKENIZER = AutoTokenizer.from_pretrained("HooshvareLab/bert-fa-zwnj-base")
+
+    # Load clustering model
+    with open('mir/models/KMeans_model.pickle', "rb") as file:
+        CLUSTER_MODEL = pickle.load(file)
+
+    # Load link analysis
+    with open('mir/models/Link_analysis.pickle', "rb") as file:
+        LINK_ANALYSIS = pickle.load(file)
 
 
 def home(request):
@@ -194,7 +203,8 @@ def cluster(request, context):
 
 
 def classify(request, context):
-    global PREPROCESSOR, LOGISTIC_REGRESSION_MODEL, TF_IDF_LR_MODEL, TRANSFORMER_CLASSIFICATION_MODEL, TRANSFORMER_CLASSIFICATION_TOKENIZER
+    global PREPROCESSOR, LOGISTIC_REGRESSION_MODEL, TF_IDF_LR_MODEL, TRANSFORMER_CLASSIFICATION_MODEL, \
+        TRANSFORMER_CLASSIFICATION_TOKENIZER
     if request.method == 'POST':
         query = request.POST.get(REQUEST_QUERY_KEY, None)
         preprocessed_query = ' '.join(PREPROCESSOR.preprocess(query))
