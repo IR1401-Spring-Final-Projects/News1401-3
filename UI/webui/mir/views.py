@@ -332,7 +332,3 @@ def link_analysis(request, context):
     context['data_a'] = a_df.to_dict('records')
     context['header_title'] = ['عنوان', 'مقدمه', 'متن خبر', 'موضوع']
     context['header'] = ['title', 'intro', 'body', 'category']
-
-
-def about(request):
-    return render(request, 'mir/about.html')
