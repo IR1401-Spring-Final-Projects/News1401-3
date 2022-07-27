@@ -11,7 +11,8 @@ from transformers import AutoModelForSequenceClassification, TrainingArguments, 
 from sentence_transformers import SentenceTransformer
 import torch
 import tqdm
-from elasticsearch import Elasticsearch
+import faiss
+#from elasticsearch import Elasticsearch
 
 CATEGORIES = {
     'Politics': 'سیاسی',
@@ -170,8 +171,8 @@ class Transformer:
     def __init__(self, preprocessor=None):
         self.model = SentenceTransformer('HooshvareLab/bert-fa-zwnj-base')
         self.preprocessor = preprocessor
-        if torch.cuda.is_available():
-            self.model = self.model.to(torch.device('cuda'))
+        # if torch.cuda.is_available():
+        #     self.model = self.model.to(torch.device('cuda'))
         self.embeddings = None
         self.index = None
 
@@ -299,7 +300,7 @@ class News_Elasticsearch:
 
     def __init__(self, username, password, dataset, preprocessed_texts):
         os.environ['ES_ENDPOINT'] = f"http://localhost:9200"
-        self.es = Elasticsearch(os.environ['ES_ENDPOINT'])
+        #self.es = Elasticsearch(os.environ['ES_ENDPOINT'])
         if not self.es.indices.exists(index='news'):
             self.es.indices.create(index='news')
         self.dataset = dataset

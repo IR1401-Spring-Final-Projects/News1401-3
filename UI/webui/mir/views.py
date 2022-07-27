@@ -109,9 +109,9 @@ def init_models():
     # TF_IDF_MODEL = TF_IDF().prepare(MINI_1K_PREPROCESSED_TEXT, mode='load', save=False)
     # FASTTEXT_MODEL = FastText()
     # FASTTEXT_MODEL.prepare(MINI_4K_PREPROCESSED_TEXT, mode='load', save=False)
-    #TRANSFORMER_MODEL = Transformer()
-    #TRANSFORMER_MODEL.prepare(DATASET, mode='load', save=False)
-    ELASTIC_MODEL = News_Elasticsearch(1, 2, MINI_10K_DATASET, MINI_10K_PREPROCESSED_TEXT)
+    TRANSFORMER_MODEL = Transformer()
+    TRANSFORMER_MODEL.prepare(DATASET, mode='load', save=False)
+    #ELASTIC_MODEL = News_Elasticsearch(1, 2, MINI_10K_DATASET, MINI_10K_PREPROCESSED_TEXT)
     # with open('mir/models/Logistic_Regression.pickle', "rb") as file:
     #         LOGISTIC_REGRESSION_MODEL = pickle.load(file)
     # TF_IDF_LR_MODEL = TF_IDF_LR()
