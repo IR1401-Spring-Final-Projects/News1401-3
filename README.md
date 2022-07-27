@@ -35,7 +35,7 @@
 <div dir="auto" align="justify">
     <p style='direction:rtl;text-align:justify;'>
         در ابتدا، لازم است مدل‌های مورد نیاز برای اجرای برنامه را از 
-        <a> این لینک </a>
+        <a href="https://www.dropbox.com/sh/rgeut39nqxy4ydv/AAAsrNBISlAVcJb-DxRjw2nia?dl=0"> این لینک </a>
         دانلود کنید و در پوشه اصلی برنامه قرار دهید.
     </p>
 </div>
@@ -47,7 +47,7 @@
 </div>
 
 ```shell
-python store_models.py
+python store_models.py 
 ```
 
 ---
@@ -67,8 +67,10 @@ python store_models.py
 </div>
 
 ```shell
-python store_models.py 
+python set_elasticsearch_credentials.py --username <USERNAME> --password <PASSWORD>
 ```
+
+---
 
 <div dir="auto" align="justify">
     <p style='direction:rtl;text-align:justify;'>
@@ -80,15 +82,64 @@ python store_models.py
 pip install -r requirements.txt
 ```
 
+---
+
 <div dir="auto" align="justify">
     <p style='direction:rtl;text-align:justify;'>
         در اولین اجرای برنامه، لازم است حتماً وی‌پی‌ان خود را وصل کرده و نیم گیگابایت دانلود اضافی در نظر داشته باشید. در اجراهای بعدی، رعایت چنین مواردی نیاز نیست.
     </p>
 </div>
 
+<div dir="auto" align="justify">
+    <p style='direction:rtl;text-align:justify;'>
+        در نهایت، دستورات زیر را برای شروع برنامه اجرا کنید.
+    </p>
+</div>
 
+```shell
+cd UI/webui
+python manage.py runserver
+```
 
+---
 
+<div>
+    <h3 style='direction:rtl;text-align:justify;'>
+        پوشه‌ها، پرونده‌ها و کلاس‌ها
+    </h3>
+</div>
 
-You can find the saved
-models [here](https://drive.google.com/drive/folders/1j9J7NPYL1h0Bzc_n-yIPsHjliPS11-rb?usp=sharing).
+<div dir="auto" align="justify">
+    <p style='direction:rtl;text-align:justify;'>
+        تمام نوتبوک‌های تمرین‌های ۳ تا ۵ و هم‌چنین نوتبوک‌های Elastic Search, Query Expansion و هم‌چنین نسخه بهبودیافته دسته‌بندی در پوشه اصلی قرار دارد. رابط کاربری و تمام داده‌های مورد نیاز آن در پوشه UI قرار دارد. رابط کاربری بر اساس فریم‌ورک django ساخته شده است و از bootstrap برای بخش فرانت آن استفاده شده است.
+    </p>
+    <p style='direction:rtl;text-align:justify;'>
+     در پوشه UI یک پروژه django به نام webui ساخته شده است. بر روی این سرور، یک اپلیکیشن mir ساخته شده است که برنامه اصلی ما برای اجرا شدن به روی سرور django می‌باشد.  
+    </p>
+    <p style='direction:rtl;text-align:justify;'>
+        در این پوشه، فایل views.py وجود دارد که وظیفه مدیریت ارتباط فرانت و مدل‌های بازیابی متفاوت از قبیل جست‌و‌جو با مدل‌های Transformers, FastText, TF-IDF, Boolean و مدل ElasticSearch، دسته‌بندی با مدل‌های Logistic Regression و Transformers و خوشه‌بندی با مدل KMeans را انجام می‌دهد.
+    </p>
+     <p style='direction:rtl;text-align:justify;'>
+        در فایل model_classes.py کلاس مدل‌های بازیابی قرار دارند که نشان‌دهنده منطق بازیابی هر کدام از مدل‌ها هستند. هم‌چنین در این فایل رابط کاربری برای برقراری ارتباط با Elastic Search قرار داده شده است. تعدادی از ویژگی‌های ثابت مورد نیاز مدل‌ها (مانند تبدیل کد کلاس هر دسته به نام آن دسته در مسئله دسته‌بندی) نیز در این فایل قرار دارد.
+    </p>
+    <p style='direction:rtl;text-align:justify;'>
+        در فایل urls.py نحوه ارتباط برنامه با سرور اصلی django مشخص شده است و هم‌چنین، در فایل Elastic_Credentials.json نام کاربری و رمز عبور جهت اتصال به سرور مشخص شده است. توجه داشته باشید در صورتی که این رابط را بر روی کامپیوتر خود اجرا می‌کنید، حتماً نام کاربری و رمز عبور را مطابق با Elastic Search سیستم خود تغییر دهید.
+    </p>
+    <p style='direction:rtl;text-align:justify;'>
+        در پوشه models تمام مدل‌ها و داده‌های مورد نیاز برای انجام فرایندهای جست‌و‌جو، دسته‌بندی، خوشه‌بندی و تحلیل لینک وجود دارد. توجه داشته‌باشید در صورتی که این برنامه را  بر روی کامپیوتر خود اجرا می‌کنید، حتماً فایل‌های مورد نیاز را از لینکی که در بالا در اختیار شما قرار داده شده است دریافت کرده و در این پوشه قرار دهید
+    </p>
+</div>
+
+---
+
+<div>
+    <h3 style='direction:rtl;text-align:justify;'>
+        ارزیابی MRR
+    </h3>
+</div>
+
+<div dir="auto" align="justify">
+    <p style='direction:rtl;text-align:justify;'>
+        برای ارزیابی کارایی موتور جست و جوی اخبار کافی است به فایل MRR_measure.xlsx مراجعه کنید.
+    </p>
+</div>
